@@ -6,6 +6,8 @@ An end-to-end clickstream analytics pipeline on AWS. Apache access logs from a c
 
 ## Architecture
 
+![Architecture diagram](ss/aws_architecture_data_flow.png)
+
 ```
 Visitor -> Apache httpd (Cloud9 EC2 instance, IAM role CafeRole)
         -> CloudWatch agent
@@ -14,8 +16,6 @@ Visitor -> Apache httpd (Cloud9 EC2 instance, IAM role CafeRole)
         -> CloudWatch dashboard (cafe-dashboard)
         -> Amazon S3 (log archive)
 ```
-
-![Architecture diagram](screenshots/01-architecture-diagram.png)
 
 | Component | Purpose |
 |---|---|
@@ -26,11 +26,7 @@ Visitor -> Apache httpd (Cloud9 EC2 instance, IAM role CafeRole)
 | CloudWatch dashboard | `cafe-dashboard` with 4 widgets for the café owner |
 | Amazon S3 | Archive of the geolocation log, queryable later (for example with Athena) |
 
-## Cost estimate
-
-> TODO: add the AWS Pricing Calculator summary (us-east-1, 12 months) and the link or export.
-
-![Cost estimate](screenshots/02-cost-estimate.png)
+<!-- TODO: add the AWS Pricing Calculator estimate (us-east-1, 12 months) here -->
 
 ## Phase 2: Website and access logs
 
@@ -38,9 +34,13 @@ Visitor -> Apache httpd (Cloud9 EC2 instance, IAM role CafeRole)
 - Loaded the site at `http://<public-ip>/cafe` and watched entries arrive with `tail -f`.
 - Backed up the original log to `initial_access_log`.
 
-![Security group](screenshots/03-security-group.png)
-![Café website](screenshots/04-cafe-website.png)
-![Tail access log](screenshots/05-tail-access-log.png)
+| Security group | Café website |
+|---|---|
+| ![Security group](ss/03-security-group.png.png) | ![Café website](ss/04-cafe-website.png.png) |
+
+| Tail access log | Initial access log |
+|---|---|
+| ![Tail access log](ss/05-tail-access-log.png.png) | ![Initial access log](ss/06-initial-access-log.png.png) |
 
 ## Phase 3: CloudWatch agent and JSON logging
 
@@ -57,30 +57,39 @@ sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
   -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
 ```
 
-![config.json](screenshots/07-agent-config-json.png)
-![httpd.conf changes](screenshots/08-httpd-conf-changes.png)
-![configtest and logio block](screenshots/09-configtest-and-logio.png)
-![Agent status](screenshots/10-agent-status-running.png)
+**Agent configuration (`config.json`):**
+
+![config.json](ss/07-agent-config-json.png.png)
+
+**Apache config changes:**
+
+![httpd.conf changes](ss/08-httpd-conf-changes.png.png)
+
+**Agent running:**
+
+![Agent status](ss/10-agent-status-running.png.png)
 
 ## Phase 4: Verifying ingestion
 
-The agent log shows both files being piped to CloudWatch, and the `apache/access` and `apache/error` log groups were created.
+The agent log shows both log files being piped to CloudWatch, and the `apache/access` and `apache/error` log groups were created.
 
-![Agent log piping](screenshots/11-agent-log-piping.png)
-![Log groups](screenshots/12-log-groups.png)
-![JSON log entry](screenshots/13-json-log-entry.png)
-![processOrder entry](screenshots/14-processorder-entry.png)
+| Agent log piping | Log groups |
+|---|---|
+| ![Agent log piping](ss/11-agent-log-piping.png.png) | ![Log groups](ss/12-log-groups.png.png) |
+
+| JSON log entry | processOrder entry |
+|---|---|
+| ![JSON log entry](ss/13-json-log-entry.png.png) | ![processOrder entry](ss/14-processorder-entry.png.png) |
 
 ## Phase 5: Simulated traffic
 
-Replaced `access_log` with the provided `samplelogs/access_log.log` (187,051 JSON lines) to simulate real traffic, then restarted the agent.
+Replaced `access_log` with the provided `samplelogs/access_log.log` (187,051 JSON lines) to simulate real traffic, then restarted the agent. The stream shows many entries sharing the same ingestion timestamp.
 
-![Sample log](screenshots/15-sample-log-head-wc.png)
-![Stream with same timestamps](screenshots/16-stream-same-timestamps.png)
+![Stream with same timestamps](ss/16-stream-same-timestamps.png.png)
 
 ## Phase 6: Funnel analysis with Logs Insights
 
-Queries ran on the data from `access_log.log`. They are saved in the `non-geo-results` folder.
+Queries ran on the data from `access_log.log` and are saved in the `non-geo-results` folder.
 
 **Menu visitors** (`menu-visitors`):
 ```
@@ -107,13 +116,21 @@ fields @timestamp, remoteIP
 
 Menu without purchase = 49,270 - 36,898. Purchase rate = 36,898 / 49,270 x 100.
 
-![Menu visitors query](screenshots/17-menu-visitors-query.png)
-![Purchasers query](screenshots/18-purchasers-query.png)
-![Saved queries](screenshots/19-saved-queries.png)
+| Menu visitors query | Purchasers query |
+|---|---|
+| ![Menu visitors query](ss/17-menu-visitors-query.png.png) | ![Purchasers query](ss/18-purchasers-query.png.png) |
+
+| Saved queries | Results file |
+|---|---|
+| ![Saved queries](ss/19-saved-queries.png.png) | ![Phase 6 results](ss/20-phase6-results.png.png) |
 
 ## Phase 7: Geolocation, dashboard and S3
 
 Replaced the log with `samplelogs/access_log_geo.log` (5,428 lines), which adds `country`, `region`, `city`, `lat` and `lon` to each entry. Deleted and recreated the `apache/access` log group so the new format was ingested cleanly.
+
+| Geo log sample | Geo log swapped in |
+|---|---|
+| ![Geo log sample](ss/21-geo-log-sample.png.png) | ![Geo log swapped](ss/22-geo-log-swapped.png.png) |
 
 Top cities by events (custom range Nov 9-10):
 
@@ -125,7 +142,7 @@ Top cities by events (custom range Nov 9-10):
 | New York | 102 |
 | Chicago | 99 |
 
-![City query](screenshots/23-city-query.png)
+![City query](ss/23-city-query.png.png)
 
 ### Dashboard: `cafe-dashboard`
 
@@ -135,6 +152,11 @@ Top cities by events (custom range Nov 9-10):
 | Cities placing the most orders | Logs table |
 | Regions visiting the website the most | Pie |
 | Regions placing the most orders | Bar |
+
+![Dashboard](ss/07-cafe-dashboard.png.png)
+
+<details>
+<summary>Dashboard widget queries</summary>
 
 ```
 # Cities visiting the menu the most
@@ -170,7 +192,7 @@ fields remoteIP, region
 | limit 10
 ```
 
-![Dashboard](screenshots/24-dashboard-full.png)
+</details>
 
 ### S3 archive
 
@@ -181,7 +203,7 @@ aws s3 ls s3://accap4-logsbucket--d5bf94a0/
 
 The archived object is 2,544,435 bytes.
 
-![S3 upload](screenshots/26-s3-upload.png)
+![S3 upload](ss/26-s3-upload.png.png)
 
 ## Challenges and fixes
 
@@ -194,19 +216,6 @@ The archived object is 2,544,435 bytes.
 | Dashboard showed only one city | The time range did not cover the ingestion time | Set a custom range covering the load |
 | Extra non-geo lines in the live log | Internet scanners hit the open port 80 | Filtered with `ispresent(city)` and archived the clean sample file to S3 |
 | `log-gen_geo.py` produced `lat`/`lon` of `None` | The lab blocks outbound geolocation lookups (HTTP 403) | Used the provided `access_log_geo.log` |
-
-## Repository structure
-
-```
-.
-├── cw-agent/config.json        # CloudWatch agent configuration
-├── httpd-conf-snippet.txt      # JSON log format changes for httpd.conf
-├── samplelogs/                 # Sample logs provided by the lab
-├── queries/                    # Saved Logs Insights and dashboard queries
-├── screenshots/                # Evidence for each phase
-├── phase6-results.txt          # Funnel analysis results
-└── README.md
-```
 
 ## Notes
 
